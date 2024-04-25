@@ -2,6 +2,7 @@ import * as lambda from "aws-cdk-lib/aws-lambda"
 import * as lambdaNodeJS from "aws-cdk-lib/aws-lambda-nodejs"
 import * as cdk from "aws-cdk-lib"
 import * as dynadb from "aws-cdk-lib/aws-dynamodb"
+import * as ssm from "aws-cdk-lib/aws-ssm"
 import { Construct } from "constructs"
 
 export class ProductsAppStack extends cdk.Stack {
@@ -24,6 +25,10 @@ export class ProductsAppStack extends cdk.Stack {
             writeCapacity: 1
         })
 
+        //Products Layer
+        const productsLayerArn = ssm.StringParameter.valueForStringParameter(this, "ProductsLayerVersionArn")
+        const productsLayer = lambda.LayerVersion.fromLayerVersionArn(this, "ProductsLayerVersionArn", productsLayerArn)
+
         this.productsFetchHandler = new lambdaNodeJS.NodejsFunction(this, 
             "ProductsFetchFunction", {
                 functionName: "ProductsFetchFunction",
@@ -38,7 +43,8 @@ export class ProductsAppStack extends cdk.Stack {
                 },//como o artefato gerado será empacotado
                 environment: {
                     PRODUCTS_DDB: this.productsDdb.tableName
-                }
+                },
+                layers: [productsLayer]
             })
 
         // da a permissao de leitura á tabela para a role do Handler
@@ -58,7 +64,8 @@ export class ProductsAppStack extends cdk.Stack {
                 },
                 environment: {
                     PRODUCTS_DDB: this.productsDdb.tableName
-                }
+                },
+                layers: [productsLayer]
             })
 
         this.productsDdb.grantWriteData(this.productsAdminHandler)
