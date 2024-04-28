@@ -44,7 +44,8 @@ export class ProductsAppStack extends cdk.Stack {
                 environment: {
                     PRODUCTS_DDB: this.productsDdb.tableName
                 },
-                layers: [productsLayer]
+                layers: [productsLayer],
+                tracing: lambda.Tracing.ACTIVE
             })
 
         // da a permissao de leitura á tabela para a role do Handler
@@ -65,7 +66,8 @@ export class ProductsAppStack extends cdk.Stack {
                 environment: {
                     PRODUCTS_DDB: this.productsDdb.tableName
                 },
-                layers: [productsLayer]
+                layers: [productsLayer],
+                tracing: lambda.Tracing.ACTIVE
             })
 
         this.productsDdb.grantWriteData(this.productsAdminHandler)
