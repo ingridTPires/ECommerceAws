@@ -6,7 +6,7 @@ export enum ProductEventType {
 
 export interface ProductEvent {
     requestId: string;
-    eventType: ProductEvent;
+    eventType: ProductEventType;
     productId: string;
     productCode: string;
     productPrice: number;
