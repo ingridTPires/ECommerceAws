@@ -98,6 +98,6 @@ function sendProductEvent(product: Product, eventType: ProductEventType, email: 
     return lambdaClient.invoke({
         FunctionName: productEventsFunctionName,
         Payload: JSON.stringify(event),
-        InvocationType: "RequestResponse" //indica ao sdk que será uma invocação sincrona
+        InvocationType: "Event"
     }).promise()
 }
