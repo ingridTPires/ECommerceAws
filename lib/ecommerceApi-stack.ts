@@ -5,8 +5,9 @@ import * as cwlogs from "aws-cdk-lib/aws-logs"
 import { Construct } from "constructs"
 
 interface ECommerceApiStackProps extends cdk.StackProps{
-    productsFetchHandler: lambdaNodeJS.NodejsFunction
-    productsAdminHandler: lambdaNodeJS.NodejsFunction
+    productsFetchHandler: lambdaNodeJS.NodejsFunction;
+    productsAdminHandler: lambdaNodeJS.NodejsFunction;
+    ordersHandler: lambdaNodeJS.NodejsFunction;
 }
 
 export class ECommerceApiStack extends cdk.Stack {
@@ -27,9 +28,14 @@ export class ECommerceApiStack extends cdk.Stack {
             }
         })
 
+        this.createProductsService(props, api)
+        this.createOrdersService(props, api)
+    }
+
+    private createProductsService(props: ECommerceApiStackProps, api: apigateway.RestApi) {
         const productsFetchIntegration = new apigateway.LambdaIntegration(props.productsFetchHandler)
 
-        const productsResource = api.root.addResource("products"); // "/products"
+        const productsResource = api.root.addResource("products") // "/products"
         productsResource.addMethod("GET", productsFetchIntegration)
 
         const productIdResource = productsResource.addResource("{id}")
@@ -42,5 +48,23 @@ export class ECommerceApiStack extends cdk.Stack {
         productIdResource.addMethod("PUT", productsAdminIntegration)
 
         productIdResource.addMethod("DELETE", productsAdminIntegration)
+    }
+
+    private createOrdersService(props: ECommerceApiStackProps, api: apigateway.RestApi) {
+        const ordersIntegration = new apigateway.LambdaIntegration(props.ordersHandler)
+
+        //resource - /orders
+        const ordersResource = api.root.addResource('orders')
+
+        //GET /orders
+        //GET /orders?email=matilde@siecola.com.br
+        //GET /orders?email=matilde@siecola.com.br&orderId=123
+        ordersResource.addMethod("GET", ordersIntegration)
+
+        //DELETE /orders?email=matilde@siecola.com.br&orderId=123
+        ordersResource.addMethod("DELETE", ordersIntegration)
+
+        //POST /orders
+        ordersResource.addMethod("POST", ordersIntegration)
     }
 }
