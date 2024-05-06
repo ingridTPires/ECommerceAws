@@ -50,3 +50,29 @@ export async function handler(event: APIGatewayProxyEvent, context: Context): Pr
         body: 'Bad request'
     }
 }
+
+function buildOrder(orderRequest: OrderRequest, products: Product[]): Order {
+    const orderProducts: OrderProductResponse[] = []
+    let totalPrice = 0
+
+    products.forEach((product) => {
+        totalPrice += product.price
+        orderProducts.push({
+            code: product.code,
+            price: product.price
+        })
+    })
+    const order: Order = {
+        pk: orderRequest.email,
+        billing: {
+            payment: orderRequest.payment,
+            totalPrice: totalPrice
+        },
+        shipping: {
+            type: orderRequest.shipping.type,
+            carrier: orderRequest.shipping.carrier
+        },
+        products: orderProducts
+    }
+    return order
+}
