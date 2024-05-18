@@ -5,11 +5,11 @@ export enum OrderEventType {
 
 export interface Envelope {
     eventType: OrderEventType;
-    data: String;
+    data: string;
 }
 
 export interface OrderEvent {
-    email: String;
+    email: string;
     orderId: string;
     shipping: { 
         type: string;
