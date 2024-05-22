@@ -138,5 +138,20 @@ export class OrdersAppStack extends cdk.Stack {
             encryption: sqs.QueueEncryption.UNENCRYPTED
         })
         ordersTopic.addSubscription(new subs.SqsSubscription(orderEventsQueue))
+
+        const orderEmailsHandler = new lambdaNodeJs.NodejsFunction(this, "OrderEmailsFunction", {
+            functionName: "OrderEmailsFunction",
+                entry: "lambda/orders/orderEmailsFunction.ts",
+                handler: "handler",
+                memorySize: 512,
+                runtime:lambda.Runtime.NODEJS_20_X,
+                timeout: cdk.Duration.seconds(2),
+                bundling:{ minify: true, sourceMap: false },
+                layers: [orderEventsLayer],
+                tracing: lambda.Tracing.ACTIVE,
+                insightsVersion: lambda.LambdaInsightsVersion.VERSION_1_0_119_0
+        })
+        orderEmailsHandler.addEventSource(new lambdaEventSource.SqsEventSource(orderEventsQueue))
+        orderEventsQueue.grantConsumeMessages(orderEmailsHandler)
     }
 }
