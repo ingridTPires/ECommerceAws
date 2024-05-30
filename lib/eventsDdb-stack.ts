@@ -20,30 +20,20 @@ export class EventsDdbStack extends cdk.Stack {
                 type: dynamodb.AttributeType.STRING
             },
             timeToLiveAttribute: "ttl",
-            billingMode: dynamodb.BillingMode.PAY_PER_REQUEST,
-            //readCapacity: 1,
-            //writeCapacity: 1
-        })
-        /*
-        const readScale = this.table.autoScaleReadCapacity({
-            maxCapacity: 2,
-            minCapacity: 1
-        })
-        readScale.scaleOnUtilization({
-            targetUtilizationPercent: 50,
-            scaleInCooldown: cdk.Duration.seconds(60),
-            scaleOutCooldown: cdk.Duration.seconds(60)
+            billingMode: dynamodb.BillingMode.PAY_PER_REQUEST
         })
 
-        const writeScale = this.table.autoScaleWriteCapacity({
-            maxCapacity: 4,
-            minCapacity: 1
+        this.table.addGlobalSecondaryIndex({
+            indexName: "emailIndex",
+            partitionKey: {
+                name: "email",
+                type: dynamodb.AttributeType.STRING
+            },
+            sortKey: {
+                name: "sk",
+                type: dynamodb.AttributeType.STRING
+            },
+            projectionType: dynamodb.ProjectionType.ALL
         })
-        writeScale.scaleOnUtilization({
-            targetUtilizationPercent: 30,
-            scaleInCooldown: cdk.Duration.seconds(60),
-            scaleOutCooldown: cdk.Duration.seconds(60)
-        })
-        */
     }
 }
