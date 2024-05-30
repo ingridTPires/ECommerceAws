@@ -17,6 +17,7 @@ interface OrdersAppStackProps extends cdk.StackProps {
 
 export class OrdersAppStack extends cdk.Stack {
     readonly ordersHandler: lambdaNodeJs.NodejsFunction
+    readonly orderEventsFetchHandler: lambdaNodeJs.NodejsFunction
     constructor(scope: Construct, id: string, props: OrdersAppStackProps){
         super(scope, id, props)
 
@@ -167,11 +168,11 @@ export class OrdersAppStack extends cdk.Stack {
                 tracing: lambda.Tracing.ACTIVE,
                 insightsVersion: lambda.LambdaInsightsVersion.VERSION_1_0_119_0
         })
-        orderEmailsHandler.addEventSource(new lambdaEventSource.SqsEventSource(orderEventsQueue, {
+        orderEmailsHandler.addEventSource(new lambdaEventSource.SqsEventSource(orderEventsQueue/*, {
             batchSize: 5,
             enabled: true,
             maxBatchingWindow: cdk.Duration.minutes(1)
-        }))
+        }*/))
         orderEventsQueue.grantConsumeMessages(orderEmailsHandler)
         const orderEmailSesPolicy = new iam.PolicyStatement({
             effect: iam.Effect.ALLOW,
@@ -179,5 +180,27 @@ export class OrdersAppStack extends cdk.Stack {
             resources: ["*"]
         })
         orderEmailsHandler.addToRolePolicy(orderEmailSesPolicy)
+
+        this.orderEventsFetchHandler = new lambdaNodeJs.NodejsFunction(this, "OrderEventsFetchFunction", {
+            functionName: "OrderEventsFetchFunction",
+                entry: "lambda/orders/orderEventsFetchFunction.ts",
+                handler: "handler",
+                memorySize: 512,
+                runtime:lambda.Runtime.NODEJS_20_X,
+                timeout: cdk.Duration.seconds(2),
+                bundling:{ minify: true, sourceMap: false },
+                environment: {
+                    EVENTS_DDB: props.eventsDdb.tableName
+                },
+                layers: [orderEventsRepositoryLayer],
+                tracing: lambda.Tracing.ACTIVE,
+                insightsVersion: lambda.LambdaInsightsVersion.VERSION_1_0_119_0
+        })
+        const eventsFetchDdbPolicy = new iam.PolicyStatement({
+            effect: iam.Effect.ALLOW,
+            actions: ['dynamodb:Query'],
+            resources: [`${props.eventsDdb.tableArn}/index/emailIndex`]
+        })
+        this.orderEventsFetchHandler.addToRolePolicy(eventsFetchDdbPolicy)
     }
 }
