@@ -1,7 +1,7 @@
 import * as cdk from "aws-cdk-lib"
 import * as apigatewayv2 from "@aws-cdk/aws-apigatewayv2-alpha"
 import * as apigatewayv2_integrations from "@aws-cdk/aws-apigatewayv2-integrations-alpha"
-import * as lambdaNodeJS from "aws-cdk-lib/aws-lambda-nodejs"
+import * as lambdaNodeJs from "aws-cdk-lib/aws-lambda-nodejs"
 import * as dynamodb from "aws-cdk-lib/aws-dynamodb"
 import * as lambda from "aws-cdk-lib/aws-lambda"
 import * as s3 from "aws-cdk-lib/aws-s3"
@@ -18,6 +18,7 @@ export class InvoiceWSApiStack extends cdk.Stack {
             tableName: 'invoices',
             billingMode: dynamodb.BillingMode.PROVISIONED,
             readCapacity: 1,
+
             writeCapacity: 1,
             partitionKey: {
                 name: "pk",
@@ -44,8 +45,28 @@ export class InvoiceWSApiStack extends cdk.Stack {
         })
 
         //WebSocket connection handler
+        const connectionHandler = new lambdaNodeJs.NodejsFunction(this, "InvoiceConnectionFunction", {
+            functionName: "InvoiceConnectionFunction",
+                entry: "lambda/invoices/invoiceConnectionFunction.ts",
+                handler: "handler",
+                memorySize: 512,
+                runtime:lambda.Runtime.NODEJS_20_X,
+                timeout: cdk.Duration.seconds(2),
+                bundling:{ minify: true, sourceMap: false },
+                tracing: lambda.Tracing.ACTIVE
+        })
 
         //WebSocket disconnection handler
+        const disconnectionHandler = new lambdaNodeJs.NodejsFunction(this, "InvoiceDisconnectionFunction", {
+            functionName: "InvoiceDisconnectionFunction",
+                entry: "lambda/invoices/invoiceDisconnectionFunction.ts",
+                handler: "handler",
+                memorySize: 512,
+                runtime:lambda.Runtime.NODEJS_20_X,
+                timeout: cdk.Duration.seconds(2),
+                bundling:{ minify: true, sourceMap: false },
+                tracing: lambda.Tracing.ACTIVE
+        })
 
         //WebSocket API
 
