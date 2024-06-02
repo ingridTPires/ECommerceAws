@@ -28,7 +28,6 @@ export class InvoiceWSApiStack extends cdk.Stack {
             tableName: 'invoices',
             billingMode: dynamodb.BillingMode.PROVISIONED,
             readCapacity: 1,
-
             writeCapacity: 1,
             partitionKey: {
                 name: "pk",
