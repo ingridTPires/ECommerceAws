@@ -10,8 +10,12 @@ import * as s3n from "aws-cdk-lib/aws-s3-notifications"
 import * as ssm from "aws-cdk-lib/aws-ssm"
 import { Construct } from "constructs"
 
+interface InvoiceWSApiStackProps extends cdk.StackProps {
+    eventsDdb: dynamodb.Table
+}
+
 export class InvoiceWSApiStack extends cdk.Stack {
-    constructor(scope: Construct, id: string, props?: cdk.StackProps){
+    constructor(scope: Construct, id: string, props: InvoiceWSApiStackProps){
         super(scope, id, props)
 
         const invoiceTransactionLayerArn = ssm.StringParameter.valueForStringParameter(this, "InvoiceTransactionLayerVersionArn")
@@ -38,7 +42,8 @@ export class InvoiceWSApiStack extends cdk.Stack {
                 type: dynamodb.AttributeType.STRING
             },
             timeToLiveAttribute: "ttl",
-            removalPolicy: cdk.RemovalPolicy.DESTROY
+            removalPolicy: cdk.RemovalPolicy.DESTROY,
+            stream: dynamodb.StreamViewType.NEW_AND_OLD_IMAGES
         })
 
         //Invoice bucket
@@ -199,5 +204,34 @@ export class InvoiceWSApiStack extends cdk.Stack {
         webSocketApi.addRoute('cancelImport', {
             integration: new apigatewayv2_integrations.WebSocketLambdaIntegration("CancelImportHandler", cancelImportHandler)
         })
+
+        const invoiceEventsHandler = new lambdaNodeJs.NodejsFunction(this, "InvoiceEventsFunction", {
+            functionName: "InvoiceEventsFunction",
+                entry: "lambda/invoices/invoiceEventsFunction.ts",
+                handler: "handler",
+                memorySize: 512,
+                runtime:lambda.Runtime.NODEJS_20_X,
+                timeout: cdk.Duration.seconds(2),
+                bundling:{ minify: true, sourceMap: false },
+                tracing: lambda.Tracing.ACTIVE,
+                environment: {
+                    EVENTS_DDB: props.eventsDdb.tableName,
+                    INVOICE_WSAPI_ENDPOINT: wsApiEndpoint
+                },
+                layers: [invoiceWSConnectionLayer]
+        })
+        const eventsDdbPolicy = new iam.PolicyStatement({
+            effect: iam.Effect.ALLOW,
+            actions: ["dynamodb:PutItem"],
+            resources: [props.eventsDdb.tableArn],
+            conditions: {
+                ['ForAllValues:StringLike'] : {
+                    'dynamodb:LeadingKeys' :  ['#invoice_*']
+                }
+            }
+        })
+        invoiceEventsHandler.addToRolePolicy(eventsDdbPolicy)
+
+        webSocketApi.grantManageConnections(invoiceEventsHandler)
     }
 }
