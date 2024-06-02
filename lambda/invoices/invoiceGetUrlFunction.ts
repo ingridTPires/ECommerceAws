@@ -2,6 +2,7 @@ import { APIGatewayProxyEvent, APIGatewayProxyResult, Context } from "aws-lambda
 import { ApiGatewayManagementApi, DynamoDB, S3 } from "aws-sdk";
 import * as AWSXRay from "aws-xray-sdk"
 import {v4 as uuid} from "uuid"
+import { InvoiceTransactionStatus, InvoiceTransactionRepository } from "/opt/nodejs/invoiceTransaction";
 
 AWSXRay.captureAWS(require('aws-sdk'))
 
@@ -15,6 +16,7 @@ const apigwManagementApi = new ApiGatewayManagementApi({
     endpoint: invoicesWsApiEndpoint
 })
 
+const invoiceTransactionRepository = new InvoiceTransactionRepository(ddbClient, invoicesDdb)
 export async function handler(event: APIGatewayProxyEvent, context: Context): Promise<APIGatewayProxyResult>{
 
     //TODO - to be removed
@@ -33,6 +35,23 @@ export async function handler(event: APIGatewayProxyEvent, context: Context): Pr
         Key: key,
         Expires:expires
     })
+
+    //Create invoice transaction
+    const timestamp = Date.now()
+    const ttl = ~~(timestamp / 1000 + 60 * 2)
+    await invoiceTransactionRepository.createInvoiceTransaction({
+        pk: "#transaction",
+        sk: key,
+        ttl: ttl,
+        requestId: lambdaRequestId,
+        transactionStatus: InvoiceTransactionStatus.GENERATED,
+        timestamp: timestamp,
+        expiresIn: expires,
+        connectionId: connectionId,
+        endpoint: invoicesWsApiEndpoint
+    })
+
+    //Send URL back to WS connected client
 
     return {
         statusCode: 200,
