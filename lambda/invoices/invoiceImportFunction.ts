@@ -55,29 +55,38 @@ async function processRecord(record: S3EventRecord){
         }).promise()
 
         const invoice = JSON.parse(object.Body!.toString('utf-8')) as InvoiceFile
-        console.log(invoice)
+        
+        if(invoice.invoiceNumber.length >= 5) {
+            const createInvoicePromise = invoiceRepository.create({
+                pk: `#invoice_${invoice.customerName}`,
+                sk: invoice.invoiceNumber,
+                ttl: 0,
+                totalValue: invoice.totalValue,
+                productId: invoice.productId,
+                quantity: invoice.quantity,
+                transactionId: key,
+                createdAt: Date.now()
+            })
+    
+            const deleteObjectPromise = s3Client.deleteObject({
+                Key: key,
+                Bucket: record.s3.bucket.name
+            }).promise()
+    
+            const updateInvoicePromise = invoiceTransactionRepository.updateInvoiceTransaction(key, InvoiceTransactionStatus.PROCESSED)
+    
+            const sendStatusPromise = invoiceWSService.sendInvoiceStatus(key, invoiceTransaction.connectionId, InvoiceTransactionStatus.PROCESSED)
+    
+            await Promise.all([createInvoicePromise, deleteObjectPromise, updateInvoicePromise, sendStatusPromise])
+        } else {
+            console.error(`Invoice import failed - non valid invoice number - TransactionId: ${key}`)
 
-        const createInvoicePromise = invoiceRepository.create({
-            pk: `#invoice_${invoice.customerName}`,
-            sk: invoice.invoiceNumber,
-            ttl: 0,
-            totalValue: invoice.totalValue,
-            productId: invoice.productId,
-            quantity: invoice.quantity,
-            transactionId: key,
-            createdAt: Date.now()
-        })
+            const sendStatusPromise = invoiceWSService.sendInvoiceStatus(key, invoiceTransaction.connectionId, InvoiceTransactionStatus.NON_VALID_INVOICE_NUMBER)
 
-        const deleteObjectPromise = s3Client.deleteObject({
-            Key: key,
-            Bucket: record.s3.bucket.name
-        }).promise()
+            const updateInvoicePromise = invoiceTransactionRepository.updateInvoiceTransaction(key, InvoiceTransactionStatus.NON_VALID_INVOICE_NUMBER)
 
-        const updateInvoicePromise = invoiceTransactionRepository.updateInvoiceTransaction(key, InvoiceTransactionStatus.PROCESSED)
-
-        const sendStatusPromise = invoiceWSService.sendInvoiceStatus(key, invoiceTransaction.connectionId, InvoiceTransactionStatus.PROCESSED)
-
-        await Promise.all([createInvoicePromise, deleteObjectPromise, updateInvoicePromise, sendStatusPromise])
+            await Promise.all([sendStatusPromise, updateInvoicePromise])
+        }       
 
     } catch(error) {
         console.log((<Error>error).message)

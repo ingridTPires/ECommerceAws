@@ -40,6 +40,8 @@ export async function handler(event: APIGatewayProxyEvent, context: Context): Pr
         console.error(`Invoice transaction not found - TransactionId: ${transactionId}`)
         await invoiceWSService.sendInvoiceStatus(transactionId, connectionId, InvoiceTransactionStatus.NOT_FOUND)
     }
+
+    await invoiceWSService.disconnectClient(connectionId)
     return {
         statusCode: 200,
         body: 'OK'
