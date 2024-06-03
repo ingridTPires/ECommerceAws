@@ -9,7 +9,7 @@ import { OrdersAppLayersStack } from '../lib/ordersAppLayers-stack';
 import { OrdersAppStack } from '../lib/ordersApp-stack';
 import { InvoiceWSApiStack } from '../lib/invoiceWSApi-stack';
 import { InvoicesAppLayersStack } from '../lib/invoicesAppLayers-stack';
-import { AuditEventBusStack } from 'lib/auditEventBus-stack';
+import { AuditEventBusStack } from '../lib/auditEventBus-stack';
 
 const app = new cdk.App();
 const env: cdk.Environment = {

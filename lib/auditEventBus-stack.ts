@@ -39,7 +39,7 @@ export class AuditEventBusStack extends cdk.Stack {
 
         const ordersErrorsFunction = new lambdaNodeJs.NodejsFunction(this, "OrderErrorsFunction", {
             functionName: "OrderErrorsFunction",
-                entry: "lambda/orders/orderErrorsFunction.ts",
+                entry: "lambda/audit/orderErrorsFunction.ts",
                 handler: "handler",
                 memorySize: 512,
                 runtime:lambda.Runtime.NODEJS_20_X,
@@ -65,7 +65,7 @@ export class AuditEventBusStack extends cdk.Stack {
 
         const invoicesErrorsFunction = new lambdaNodeJs.NodejsFunction(this, "InvoicesErrorsFunction", {
             functionName: "InvoicesErrorsFunction",
-                entry: "lambda/orders/invoicesErrorsFunction.ts",
+                entry: "lambda/audit/invoicesErrorsFunction.ts",
                 handler: "handler",
                 memorySize: 512,
                 runtime:lambda.Runtime.NODEJS_20_X,
