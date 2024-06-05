@@ -119,16 +119,33 @@ export class ECommerceApiStack extends cdk.Stack {
                 scopes: [cognito.OAuthScope.resourceServer(customerResourceServer, customerMobileScope)]
             }
         })
+
+        this.productsAuthorizer = new apigateway.CognitoUserPoolsAuthorizer(this, "ProductsAuthorizer", {
+            authorizerName: "ProductsAuthorizer",
+            cognitoUserPools: [this.customerPool]
+        })
     }
 
     private createProductsService(props: ECommerceApiStackProps, api: apigateway.RestApi) {
         const productsFetchIntegration = new apigateway.LambdaIntegration(props.productsFetchHandler)
 
+        const productsFetchWebMobileIntegrationOption = {
+            authorizer: this.productsAuthorizer,
+            authorizationType: apigateway.AuthorizationType.COGNITO,
+            authorizationScopes: ['customer/web', 'customer/mobile']
+        }
+
+        const productsFetchWebIntegrationOption = {
+            authorizer: this.productsAuthorizer,
+            authorizationType: apigateway.AuthorizationType.COGNITO,
+            authorizationScopes: ['customer/web']
+        }
+
         const productsResource = api.root.addResource("products") // "/products"
-        productsResource.addMethod("GET", productsFetchIntegration)
+        productsResource.addMethod("GET", productsFetchIntegration, productsFetchWebMobileIntegrationOption)
 
         const productIdResource = productsResource.addResource("{id}")
-        productIdResource.addMethod("GET", productsFetchIntegration)
+        productIdResource.addMethod("GET", productsFetchIntegration, productsFetchWebIntegrationOption)
 
         const productsAdminIntegration = new apigateway.LambdaIntegration(props.productsAdminHandler)
 
