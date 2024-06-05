@@ -4,6 +4,7 @@ import * as apigateway from "aws-cdk-lib/aws-apigateway"
 import * as cwlogs from "aws-cdk-lib/aws-logs"
 import * as cognito from "aws-cdk-lib/aws-cognito"
 import * as lambda from "aws-cdk-lib/aws-lambda"
+import * as lambdaNodeJs from 'aws-cdk-lib/aws-lambda-nodejs'
 import { Construct } from "constructs"
 
 interface ECommerceApiStackProps extends cdk.StackProps{
@@ -40,8 +41,36 @@ export class ECommerceApiStack extends cdk.Stack {
     }
 
     private createCognitoAuth(){
+        const postConfirmationHandler = new lambdaNodeJs.NodejsFunction(this, "PostConfirmationFunction", {
+            functionName: "PostConfirmationFunction",
+                entry: "lambda/auth/postConfirmationFunction.ts",
+                handler: "handler",
+                memorySize: 512,
+                runtime:lambda.Runtime.NODEJS_20_X,
+                timeout: cdk.Duration.seconds(2),
+                bundling:{ minify: true, sourceMap: false },
+                tracing: lambda.Tracing.ACTIVE,
+                insightsVersion: lambda.LambdaInsightsVersion.VERSION_1_0_119_0
+        })
+
+        const preAuthenticationHandler = new lambdaNodeJs.NodejsFunction(this, "PreAuthenticationFunction", {
+            functionName: "PreAuthenticationFunction",
+                entry: "lambda/auth/preAuthenticationFunction.ts",
+                handler: "handler",
+                memorySize: 512,
+                runtime:lambda.Runtime.NODEJS_20_X,
+                timeout: cdk.Duration.seconds(2),
+                bundling:{ minify: true, sourceMap: false },
+                tracing: lambda.Tracing.ACTIVE,
+                insightsVersion: lambda.LambdaInsightsVersion.VERSION_1_0_119_0
+        })
+
         //Cognito customer UserPool
         this.customerPool = new cognito.UserPool(this, "CustomerPool", {
+            lambdaTriggers: {
+                preAuthentication: preAuthenticationHandler,
+                postConfirmation: postConfirmationHandler
+            },
             userPoolName: "CustomerPool",
             removalPolicy: cdk.RemovalPolicy.DESTROY,
             selfSignUpEnabled: true,
@@ -75,9 +104,9 @@ export class ECommerceApiStack extends cdk.Stack {
              accountRecovery: cognito.AccountRecovery.EMAIL_ONLY
         })
 
-        this.customerPool.addDomain("CustomerDomain", {
+        this.customerPool.addDomain("CustomerServiceDomain", {
             cognitoDomain: {
-                domainPrefix: "pcs-customer-service"
+                domainPrefix: "x-pcs-customer-service"
             }
         })
 
@@ -91,7 +120,7 @@ export class ECommerceApiStack extends cdk.Stack {
         })
 
         const customerResourceServer = this.customerPool.addResourceServer("CustomerResourceServer", {
-            identifier: "Customer",
+            identifier: "customer",
             userPoolResourceServerName: "CustomerResourceServer",
             scopes: [customerWebScope, customerMobileScope]
         })
