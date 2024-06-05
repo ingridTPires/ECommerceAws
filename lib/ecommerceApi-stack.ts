@@ -65,6 +65,36 @@ export class ECommerceApiStack extends cdk.Stack {
                 insightsVersion: lambda.LambdaInsightsVersion.VERSION_1_0_119_0
         })
 
+        //Cognito admin UserPool
+        this.customerPool = new cognito.UserPool(this, "AdminPool", {
+            userPoolName: "AdminPool",
+            removalPolicy: cdk.RemovalPolicy.DESTROY,
+            selfSignUpEnabled: false,
+             userInvitation: {
+                emailSubject: "Welcome to ECommerce administrator service",
+                emailBody: 'Your username is {username} and temporary password is {####}'
+             },
+             signInAliases: {
+                username: false,
+                email: true
+             },
+             standardAttributes:{
+                email: {
+                    required: true,
+                    mutable: false
+                }
+             },
+             passwordPolicy: {
+                minLength: 8,
+                requireLowercase: true,
+                requireUppercase: true,
+                requireDigits: true,
+                requireSymbols: true,
+                tempPasswordValidity: cdk.Duration.days(3)
+             },
+             accountRecovery: cognito.AccountRecovery.EMAIL_ONLY
+        })
+
         //Cognito customer UserPool
         this.customerPool = new cognito.UserPool(this, "CustomerPool", {
             lambdaTriggers: {
@@ -110,6 +140,12 @@ export class ECommerceApiStack extends cdk.Stack {
             }
         })
 
+        this.customerPool.addDomain("AdminServiceDomain", {
+            cognitoDomain: {
+                domainPrefix: "x-pcs-admin-service"
+            }
+        })
+
         const customerWebScope = new cognito.ResourceServerScope({
             scopeName: "web",
             scopeDescription: "Customer Web operation"
@@ -119,10 +155,20 @@ export class ECommerceApiStack extends cdk.Stack {
             scopeDescription: "Customer Mobile operation"
         })
 
+        const adminWebScope = new cognito.ResourceServerScope({
+            scopeName: "web",
+            scopeDescription: "Admin Web operation"
+        })
+
         const customerResourceServer = this.customerPool.addResourceServer("CustomerResourceServer", {
             identifier: "customer",
             userPoolResourceServerName: "CustomerResourceServer",
             scopes: [customerWebScope, customerMobileScope]
+        })
+        const adminResourceServer = this.adminPool.addResourceServer("AdminResourceServer", {
+            identifier: "admin",
+            userPoolResourceServerName: "AdminResourceServer",
+            scopes: [adminWebScope]
         })
 
         this.customerPool.addClient("customer-web-client", {
@@ -146,6 +192,18 @@ export class ECommerceApiStack extends cdk.Stack {
             refreshTokenValidity: cdk.Duration.days(7),
             oAuth: {
                 scopes: [cognito.OAuthScope.resourceServer(customerResourceServer, customerMobileScope)]
+            }
+        })
+
+        this.adminPool.addClient("admin-web-client", {
+            userPoolClientName: "adminWebClient",
+            authFlows: {
+                userPassword: true
+            },
+            accessTokenValidity: cdk.Duration.minutes(60),
+            refreshTokenValidity: cdk.Duration.days(7),
+            oAuth: {
+                scopes: [cognito.OAuthScope.resourceServer(adminResourceServer, adminWebScope)]
             }
         })
 
