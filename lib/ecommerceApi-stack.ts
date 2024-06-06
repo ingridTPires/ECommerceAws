@@ -18,6 +18,7 @@ interface ECommerceApiStackProps extends cdk.StackProps{
 export class ECommerceApiStack extends cdk.Stack {
     private productsAuthorizer: apigateway.CognitoUserPoolsAuthorizer
     private productsAdminAuthorizer: apigateway.CognitoUserPoolsAuthorizer
+    private ordersAuthorizer: apigateway.CognitoUserPoolsAuthorizer
     private customerPool: cognito.UserPool
     private adminPool: cognito.UserPool
 
@@ -228,6 +229,10 @@ export class ECommerceApiStack extends cdk.Stack {
             authorizerName: "ProductsAdminAuthorizer",
             cognitoUserPools: [this.adminPool]
         })
+        this.ordersAuthorizer = new apigateway.CognitoUserPoolsAuthorizer(this, "OrdersAuthorizer", {
+            authorizerName: "OrdersAuthorizer",
+            cognitoUserPools: [ this.customerPool, this.adminPool ]
+        })
     }
 
     private createProductsService(props: ECommerceApiStackProps, api: apigateway.RestApi) {
@@ -306,7 +311,11 @@ export class ECommerceApiStack extends cdk.Stack {
         //GET /orders
         //GET /orders?email=matilde@siecola.com.br
         //GET /orders?email=matilde@siecola.com.br&orderId=123
-        ordersResource.addMethod("GET", ordersIntegration)
+        ordersResource.addMethod("GET", ordersIntegration, {
+            authorizer: this.ordersAuthorizer,
+            authorizationType: apigateway.AuthorizationType.COGNITO,
+            authorizationScopes: ["customer/web", "customer/mobile", "admin/web"]
+        })
 
         const orderDeletionValidator = new apigateway.RequestValidator(this, "OrderDeletionValidator", {
             restApi: api,
@@ -319,7 +328,10 @@ export class ECommerceApiStack extends cdk.Stack {
                 'method.request.querystring.email': true,
                 'method.request.querystring.orderId': true
             },
-            requestValidator: orderDeletionValidator
+            requestValidator: orderDeletionValidator,
+            authorizer: this.ordersAuthorizer,
+            authorizationType: apigateway.AuthorizationType.COGNITO,
+            authorizationScopes: ["customer/web", "admin/web"]
         })
 
         //POST /orders
@@ -343,7 +355,10 @@ export class ECommerceApiStack extends cdk.Stack {
         })
         ordersResource.addMethod("POST", ordersIntegration, {
             requestValidator: orderRequestValidator,
-            requestModels: { "application/json": orderModel }
+            requestModels: { "application/json": orderModel },
+            authorizer: this.ordersAuthorizer,
+            authorizationType: apigateway.AuthorizationType.COGNITO,
+            authorizationScopes: ["customer/web", "admin/web"]
         })
 
         // /orders/events
