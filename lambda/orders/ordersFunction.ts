@@ -37,27 +37,39 @@ export async function handler(event: APIGatewayProxyEvent, context: Context): Pr
         if(event.queryStringParameters){
             const email = event.queryStringParameters!.email
             const orderId = event.queryStringParameters!.orderId
-            if(email){
-                if(orderId){
-                    try{
-                        const order = await orderRepository.getOrder(email, orderId)
+
+            const isAdmin = authInfoService.isAdminUser(event.requestContext.authorizer)
+            const authenticatedUser = await authInfoService.getUserInfo(event.requestContext.authorizer)
+            
+            if(isAdmin || email === authenticatedUser){
+                
+                if(email){
+                    if(orderId){
+                        try{
+                            const order = await orderRepository.getOrder(email, orderId)
+                            return {
+                                statusCode: 200,
+                                body: JSON.stringify(convertToOrderResponse(order))
+                            }
+                        } catch (error) {
+                            console.log((<Error>error).message)
+                            return {
+                                statusCode: 404,
+                                body: (<Error>error).message
+                            }
+                        }                    
+                    } else {
+                        const orders = await orderRepository.getOrdersByEmail(email)
                         return {
                             statusCode: 200,
-                            body: JSON.stringify(convertToOrderResponse(order))
+                            body: JSON.stringify(orders.map(convertToOrderResponse))
                         }
-                    } catch (error) {
-                        console.log((<Error>error).message)
-                        return {
-                            statusCode: 404,
-                            body: (<Error>error).message
-                        }
-                    }                    
-                } else {
-                    const orders = await orderRepository.getOrdersByEmail(email)
-                    return {
-                        statusCode: 200,
-                        body: JSON.stringify(orders.map(convertToOrderResponse))
                     }
+                }
+            } else {
+                return {
+                    statusCode: 403,
+                    body: `You don't have permission to access this operation`
                 }
             }
         } else {
